@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 import { program } from "commander";
 import { init } from "./commands/init";
 import { spawn } from "./commands/spawn";

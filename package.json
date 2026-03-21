@@ -2,18 +2,17 @@
   "name": "agent-trees",
   "version": "0.1.0",
   "description": "Git worktrees for humans and agents",
-  "module": "src/index.ts",
   "type": "module",
   "bin": {
-    "atree": "./atree"
+    "atree": "./dist/atree.js"
   },
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build src/index.ts --compile --outfile atree",
+    "build": "bun build src/index.ts --target node --outfile dist/atree.js --banner '#!/usr/bin/env node' && chmod +x dist/atree.js",
     "prepublishOnly": "bun run build"
   },
   "files": [
-    "atree",
+    "dist/atree.js",
     "README.md",
     "LICENSE"
   ],
@@ -26,6 +25,9 @@
   "homepage": "https://github.com/rohit121/agent-trees",
   "bugs": {
     "url": "https://github.com/rohit121/agent-trees/issues"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "devDependencies": {
     "@types/bun": "latest",
