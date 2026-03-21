@@ -1,0 +1,20 @@
+{
+  "primary": "main",
+  "share": [
+    "node_modules"
+  ],
+  "env": {
+    "files": [
+      ".env",
+      ".env.local",
+      ".env.development.local"
+    ]
+  },
+  "services": {
+    "web": {
+      "command": "bun run dev",
+      "scope": "tree"
+    }
+  },
+  "hooks": {}
+}
