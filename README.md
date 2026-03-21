@@ -20,14 +20,17 @@ atree spawn feature-branch
 ## Install
 
 ```bash
-# with bun
-bunx agent-trees
+npm install -g @agent-trees/atree
+# or
+npx @agent-trees/atree init
+```
 
-# or from source
+**From source:**
+```bash
 git clone https://github.com/rohit121/agent-trees
 cd agent-trees
 bun install && bun run build
-cp atree /usr/local/bin/atree
+cp dist/atree.js /usr/local/bin/atree
 ```
 
 ## Getting started
