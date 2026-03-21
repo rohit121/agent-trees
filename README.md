@@ -2,19 +2,40 @@
 
 > Git worktrees for humans and agents.
 
-`atree` eliminates the friction of running multiple branches in parallel — shared `node_modules`, auto-linked `.env` files, zero manual setup. Designed for the way AI coding agents actually work: 2-3 worktrees active simultaneously, headless, in parallel.
+## The new way of building
 
-## The problem
+AI coding agents have changed how we work. Instead of one developer, one branch, one terminal — you're now running **2 or 3 features in parallel**, each with its own agent. One agent is building the auth flow, another is refactoring the API, a third is fixing a bug. All at the same time.
+
+Git supports this with worktrees — separate working directories, each on their own branch, sharing the same repo. But the moment you try to actually use them, you hit a wall:
+
+- Your `.env` files live in the main branch. Each worktree needs them, but they're not there.
+- `node_modules` is 400MB. You don't want to reinstall it for every branch.
+- Your dev server hardcodes port 3000. Three agents, three dev servers — they all fight over the same port.
+- Every new worktree is a fresh checkout with none of the setup your main branch has.
+
+So instead of parallelism, you end up manually copying files, symlinking directories, and babysitting each agent's environment. The overhead kills the benefit.
+
+**Agent Trees fixes this.** One command to spawn a worktree that's fully wired up — dependencies linked, env files shared, services ready to run.
+
+## How it works
 
 ```bash
-# what git worktrees give you
-git worktree add ../my-feature feature-branch
-cd ../my-feature
-ln -s ../main/node_modules .      # manual
-cp ../main/.env.local .           # manual
+atree spawn feature-auth
+```
 
-# what atree gives you
-atree spawn feature-branch
+That's it. Agent Trees:
+
+1. Creates a git worktree for the branch
+2. Symlinks `node_modules` (and any other configured dirs) from your main branch — no reinstall
+3. Symlinks your `.env`, `.env.local` and other config files from your main branch
+4. Runs any `postSpawn` hooks you've configured (migrations, code generation, etc.)
+
+Your agent can immediately `cd` in and start working. No setup, no missing env vars, no port conflicts to resolve manually.
+
+```
+your-repo/          ← main branch, primary worktree
+your-repo-feature-auth/    ← spawned by atree, fully wired up
+your-repo-fix-payments/    ← spawned by atree, fully wired up
 ```
 
 ## Install
@@ -42,14 +63,12 @@ atree init
 `atree init` walks you through setup interactively:
 
 1. **Explains what it will do** and asks permission before touching anything
-2. **Detects AI agents** you already have installed — `claude`, `codex`, `gemini`, or any custom CLI (opencode, etc.)
+2. **Detects AI agents** you already have installed — `claude`, `codex`, `gemini`, or any custom CLI
 3. **Scans your repo** — reads `package.json`, `Procfile`, `docker-compose.yml`, lock files, and other signals to understand your stack
-4. **Asks the agent** to generate a tailored `atreeconfig.json` for your project (services, shared dirs, env files)
+4. **Asks the agent** to generate a tailored `atreeconfig.json` for your project
 5. **Shows you the result** and asks for confirmation before writing anything
 
-If no AI agent is found, it falls back to heuristic detection based on lock files and config files.
-
-The agent runs entirely locally — no data leaves your machine.
+If no AI agent is found, it falls back to heuristic detection.
 
 ```
 $ atree init
@@ -73,14 +92,14 @@ Which agent to use? [claude] or type another:
 ## Usage
 
 ```bash
-atree init                   # initialise in current repo (interactive, AI-assisted)
-atree spawn <branch>         # create worktree, link deps + env
-atree spawn -b <branch>      # create worktree on a new branch
-atree status                 # show all trees and changed files
+atree init                   # set up agent trees in current repo
+atree spawn <branch>         # create a worktree, link deps + env
+atree spawn -b <branch>      # create a worktree on a new branch
+atree status                 # show all active trees and changed files
 atree dev                    # start dev server for current tree
 atree dev --all              # start all trees in parallel with prefixed logs
 atree sync                   # re-link deps/env if symlinks break
-atree kill <branch>          # remove worktree
+atree kill <branch>          # remove a worktree
 ```
 
 ## Config
@@ -119,12 +138,12 @@ Commit `atreeconfig.json` to share setup with your team:
 | scope | behaviour |
 |-------|-----------|
 | `tree` | separate instance per worktree |
-| `primary` | runs once on primary, all other trees point to it |
+| `primary` | runs once on primary, all trees point to it |
 | `shared` | runs once, shared across all trees (DB, Redis, etc.) |
 
 ### Symlinks are visible
 
-Shared dirs and env files are symlinks — they show up in `ls`. `ls -la` makes the target explicit:
+Shared dirs and env files are symlinks — they show up in `ls -la`:
 
 ```
 lrwxr-xr-x  node_modules -> /path/to/primary/node_modules
@@ -140,28 +159,17 @@ atreeconfig.json    ✅  shared team config
 .atree/             ❌  machine-local (added to .gitignore by atree init)
 ```
 
-## How it works
-
-atree is a thin layer on top of `git worktree`. On `atree spawn` it:
-
-1. Calls `git worktree add` to check out the branch
-2. Symlinks `node_modules` (and other configured dirs) from the primary tree
-3. Symlinks `.env*` files from the primary tree
-4. Runs the `postSpawn` hook if configured
-
-On `atree dev --all` it starts each service across all trees with color-coded prefixed output.
-
 ## Requirements
 
 - git >= 2.25
-- bun (for building from source), or just the compiled binary
+- Node >= 22
 
 ## Development
 
 ```bash
 bun install
 bun run dev -- init        # run any command locally
-bun run build              # compile to ./atree binary
+bun run build              # bundle to dist/atree.js
 ```
 
 ## License
