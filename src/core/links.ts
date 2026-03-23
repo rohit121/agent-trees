@@ -1,5 +1,5 @@
-import { join } from "path";
-import { existsSync, symlinkSync, unlinkSync, cpSync } from "fs";
+import { join, dirname } from "path";
+import { existsSync, symlinkSync, unlinkSync, cpSync, mkdirSync } from "fs";
 import chalk from "chalk";
 import type { AtreeConfig } from "./config";
 
@@ -16,6 +16,9 @@ export function linkSharedDirs(
       console.log(chalk.yellow(`  skip ${dir} (not found in primary)`));
       continue;
     }
+
+    // Ensure parent directory exists (needed for nested paths like apps/web/node_modules)
+    mkdirSync(dirname(dest), { recursive: true });
 
     if (existsSync(dest)) {
       unlinkSync(dest);
@@ -42,6 +45,8 @@ export function linkEnvFiles(
     const dest = join(targetPath, file);
 
     if (!existsSync(src)) continue;
+
+    mkdirSync(dirname(dest), { recursive: true });
 
     if (existsSync(dest)) {
       unlinkSync(dest);

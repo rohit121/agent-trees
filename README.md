@@ -33,9 +33,9 @@ That's it. Agent Trees:
 Your agent can immediately `cd` in and start working. No setup, no missing env vars, no port conflicts to resolve manually.
 
 ```
-your-repo/          ← main branch, primary worktree
-your-repo-feature-auth/    ← spawned by atree, fully wired up
-your-repo-fix-payments/    ← spawned by atree, fully wired up
+your-repo/                  ← main branch, primary worktree
+your-repo-feature-auth/     ← spawned by atree, fully wired up
+your-repo-fix-payments/     ← spawned by atree, fully wired up
 ```
 
 ## Install
@@ -65,29 +65,11 @@ atree init
 1. **Explains what it will do** and asks permission before touching anything
 2. **Detects AI agents** you already have installed — `claude`, `codex`, `gemini`, or any custom CLI
 3. **Scans your repo** — reads `package.json`, `Procfile`, `docker-compose.yml`, lock files, and other signals to understand your stack
-4. **Asks the agent** to generate a tailored `atreeconfig.json` for your project
-5. **Shows you the result** and asks for confirmation before writing anything
+4. **For monorepos:** detects workspace packages and lets you pick which ones to include
+5. **Asks the agent** to generate a tailored `atreeconfig.json` for your project
+6. **Shows you the result** and asks for confirmation before writing anything
 
 If no AI agent is found, it falls back to heuristic detection.
-
-```
-$ atree init
-
-Welcome to Agent Trees
-
-atree init will:
-  1. Scan your repo — read key config files (package.json, Procfile, etc.)
-  2. Use an AI agent you already have installed to generate atreeconfig.json
-  3. Show you the result and ask for confirmation before writing anything
-  4. Update .gitignore to exclude atree runtime files
-
-No data is sent anywhere — the agent runs locally on your machine.
-
-Proceed? (Y/n)
-
-Detected: claude, codex
-Which agent to use? [claude] or type another:
-```
 
 ## Usage
 
@@ -104,46 +86,26 @@ atree kill <branch>          # remove a worktree
 
 ## Config
 
-Commit `atreeconfig.json` to share setup with your team:
+Commit `atreeconfig.json` to share setup with your team.
+
+### Sharing dependencies and env files
+
+The `share` array lists directories to symlink from the primary worktree into every spawned tree. The `env.files` array lists files to symlink the same way.
 
 ```json
 {
   "primary": "main",
   "share": ["node_modules"],
   "env": {
-    "files": [".env", ".env.local", ".env.development.local"]
-  },
-  "services": {
-    "web": {
-      "command": "bun run dev",
-      "scope": "tree"
-    },
-    "api": {
-      "command": "bun run api",
-      "scope": "primary"
-    },
-    "db": {
-      "command": "docker compose up db",
-      "scope": "shared"
-    }
+    "files": [".env", ".env.local"]
   },
   "hooks": {
-    "postSpawn": "bun install"
+    "postSpawn": "npm install"
   }
 }
 ```
 
-### Service scopes
-
-| scope | behaviour |
-|-------|-----------|
-| `tree` | separate instance per worktree |
-| `primary` | runs once on primary, all trees point to it |
-| `shared` | runs once, shared across all trees (DB, Redis, etc.) |
-
-### Symlinks are visible
-
-Shared dirs and env files are symlinks — they show up in `ls -la`:
+Symlinks are visible — they show up in `ls -la`:
 
 ```
 lrwxr-xr-x  node_modules -> /path/to/primary/node_modules
@@ -151,6 +113,77 @@ lrwxr-xr-x  .env -> /path/to/primary/.env
 ```
 
 Bundlers, runtimes, and editors follow symlinks transparently. If something breaks, `git worktree list` and `ls -la` tell you everything.
+
+### Services
+
+The `services` map defines what `atree dev` starts. Each service has a `command`, an `instance` mode, and an optional `cwd`.
+
+```json
+{
+  "services": {
+    "web": {
+      "command": "npm run dev",
+      "instance": "tree"
+    },
+    "db": {
+      "command": "docker compose up db",
+      "instance": "shared"
+    }
+  }
+}
+```
+
+| `instance` | behaviour |
+|------------|-----------|
+| `tree`     | one instance per worktree — each branch runs its own |
+| `shared`   | runs once from the primary worktree, all trees share it |
+
+Use `shared` for infrastructure that doesn't change per branch (databases, queues, mock servers). Use `tree` for the code you're actively developing.
+
+### Monorepo support
+
+For monorepos, `atree init` detects workspace packages and lets you select which ones to include. Each selected package gets its own service entry and its own symlinked `node_modules` (or `.venv` for Python).
+
+```json
+{
+  "primary": "main",
+  "share": ["node_modules", "apps/web/node_modules", "apps/api/node_modules"],
+  "env": {
+    "files": [".env", "apps/web/.env", "apps/api/.env"]
+  },
+  "services": {
+    "db": {
+      "command": "docker compose up db",
+      "instance": "shared"
+    },
+    "api": {
+      "command": "npm run dev",
+      "instance": "shared",
+      "cwd": "apps/api"
+    },
+    "web": {
+      "command": "npm run dev",
+      "instance": "tree",
+      "cwd": "apps/web"
+    }
+  }
+}
+```
+
+This is the key pattern for monorepos: mark the services you're not changing as `shared` so they run once from the primary tree, and only run `tree` instances for the packages you're actively developing. When you spawn a feature branch, `atree dev` starts only the `tree` services — the rest are already running.
+
+### Hooks
+
+```json
+{
+  "hooks": {
+    "postSpawn": "npm install",
+    "preKill": "npm run cleanup"
+  }
+}
+```
+
+`postSpawn` runs inside the new worktree immediately after it's created — good for installing deps, running migrations, or generating code.
 
 ## What gets checked in
 

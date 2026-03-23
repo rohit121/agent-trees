@@ -36,7 +36,7 @@ export function StatusView({ trees, changedFiles, config }: Props) {
                   {Object.entries(config.services).map(([svc, svcConfig]) => (
                     <Box key={svc} marginRight={3}>
                       <Text color="blue">{svc}</Text>
-                      <Text dimColor> [{svcConfig.scope}]</Text>
+                      <Text dimColor> [{svcConfig.instance}]</Text>
                     </Box>
                   ))}
                 </Box>

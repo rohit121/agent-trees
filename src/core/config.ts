@@ -3,7 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 
 export interface ServiceConfig {
   command: string;
-  scope: "tree" | "primary" | "shared";
+  instance: "tree" | "shared";
+  cwd?: string; // relative to worktree root; defaults to worktree root
 }
 
 export interface AtreeConfig {
@@ -28,7 +29,7 @@ const DEFAULT_CONFIG: AtreeConfig = {
   services: {
     web: {
       command: "bun run dev",
-      scope: "tree",
+      instance: "tree",
     },
   },
   hooks: {},
@@ -45,7 +46,7 @@ export function configExists(repoRoot: string): boolean {
 export function readConfig(repoRoot: string): AtreeConfig {
   const path = getConfigPath(repoRoot);
   if (!existsSync(path)) {
-    throw new Error(`No atreeconfig.json found at ${repoRoot}. Run atree init first.`);
+    return defaultConfig();
   }
   const raw = readFileSync(path, "utf-8");
   return JSON.parse(raw) as AtreeConfig;
