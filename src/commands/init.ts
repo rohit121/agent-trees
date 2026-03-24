@@ -69,7 +69,9 @@ function detectWorkspacePackageDirs(repoRoot: string): string[] {
       const ws = pkg.workspaces;
       if (Array.isArray(ws)) workspaceGlobs = ws;
       else if (ws?.packages && Array.isArray(ws.packages)) workspaceGlobs = ws.packages;
-    } catch {}
+    } catch (err) {
+      console.warn(chalk.yellow(`  warn: could not parse ${rootPkgPath}: ${err}`));
+    }
   }
 
   // Also check common monorepo dirs not already covered by globs
@@ -104,7 +106,9 @@ function detectWorkspacePackageDirs(repoRoot: string): string[] {
           result.push(join(baseDir, entry.name));
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn(chalk.yellow(`  warn: could not read ${baseFullPath}: ${err}`));
+    }
   }
 
   return [...new Set(result)];
@@ -257,11 +261,11 @@ No data is sent anywhere — the agent runs locally on your machine.
     } else if (found.length === 1) {
       console.log(chalk.green(`\nDetected: ${found[0]}`));
       const confirm = await ask(rl, `Use ${chalk.cyan(found[0])} to generate config? (Y/n) `);
-      chosenAgent = confirm.trim().toLowerCase() === "n" ? "" : found[0];
+      chosenAgent = confirm.trim().toLowerCase() === "n" ? "" : found[0]!;
     } else {
       console.log(chalk.green(`\nDetected agents: ${found.join(", ")}`));
       const pick = await ask(rl, `Which agent to use? [${found[0]}] or type another: `);
-      chosenAgent = pick.trim() || found[0];
+      chosenAgent = pick.trim() || found[0]!;
     }
 
     // --- Package selection (monorepos) ---
@@ -420,7 +424,9 @@ function buildHeuristicConfig(repoRoot: string, primaryBranch: string, selectedD
           instance: "tree",
           cwd: pkgDir,
         };
-      } catch {}
+      } catch (err) {
+        console.warn(chalk.yellow(`  warn: could not read ${pkgJsonPath}: ${err}`));
+      }
     }
 
     // Fall back to a generic web service if no selected packages had dev scripts
