@@ -1,88 +1,22 @@
 import { join } from "path";
-import { existsSync, readFileSync, writeFileSync, copyFileSync } from "fs";
+import { existsSync, copyFileSync } from "fs";
 import chalk from "chalk";
 import { execa } from "execa";
 import { getRepoRoot, listWorktrees, getCurrentBranch } from "../core/git";
 import { readConfig } from "../core/config";
 import {
   detectPackageManager,
-  detectAllPackageManagers,
   pmAddCmd,
   lockFileNames,
   manifestFileName,
   getPMInfo,
-  type PackageManager,
-  type Ecosystem,
 } from "../core/package-manager";
 import { acquireLock, releaseLock } from "../core/lockfile";
+import { syncNodeDeps, syncManifest, detectVersionChanges } from "../core/manifest";
 
 interface AddOptions {
   saveDev?: boolean;
   workspace?: string;
-}
-
-/**
- * Sync Node.js package.json dependencies from source to target.
- * Overlays source's deps onto target, preserving target-only fields.
- */
-function syncNodeDeps(sourcePath: string, targetPath: string): void {
-  const sourcePkg = JSON.parse(readFileSync(sourcePath, "utf-8"));
-  const targetPkg = JSON.parse(readFileSync(targetPath, "utf-8"));
-
-  if (sourcePkg.dependencies) {
-    targetPkg.dependencies = {
-      ...targetPkg.dependencies,
-      ...sourcePkg.dependencies,
-    };
-  }
-  if (sourcePkg.devDependencies) {
-    targetPkg.devDependencies = {
-      ...targetPkg.devDependencies,
-      ...sourcePkg.devDependencies,
-    };
-  }
-
-  writeFileSync(targetPath, JSON.stringify(targetPkg, null, 2) + "\n");
-}
-
-/**
- * Copy a manifest file from source to target (for non-JSON manifests like
- * pyproject.toml, Cargo.toml, go.mod where merging is complex).
- */
-function syncManifest(sourcePath: string, targetPath: string): void {
-  copyFileSync(sourcePath, targetPath);
-}
-
-/**
- * Detect if any of the requested packages are already installed at a different
- * version (downgrade/upgrade detection for Node.js).
- */
-function detectVersionChanges(
-  pkgJsonPath: string,
-  packages: string[]
-): Array<{ name: string; current: string; requested: string | null }> {
-  if (!existsSync(pkgJsonPath)) return [];
-
-  const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
-  const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-  const changes: Array<{ name: string; current: string; requested: string | null }> = [];
-
-  for (const spec of packages) {
-    // Parse "react@17" → name="react", version="17"
-    const atIdx = spec.lastIndexOf("@");
-    const hasVersion = atIdx > 0; // ignore leading @ in scoped packages
-    const name = hasVersion ? spec.slice(0, atIdx) : spec;
-    const requested = hasVersion ? spec.slice(atIdx + 1) : null;
-
-    if (allDeps[name] && requested) {
-      const current = allDeps[name].replace(/^[\^~>=<]*/,  "");
-      if (current !== requested) {
-        changes.push({ name, current, requested });
-      }
-    }
-  }
-
-  return changes;
 }
 
 export async function add(packages: string[], opts: AddOptions): Promise<void> {

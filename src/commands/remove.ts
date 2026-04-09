@@ -1,5 +1,5 @@
 import { join } from "path";
-import { existsSync, readFileSync, writeFileSync, copyFileSync } from "fs";
+import { existsSync, copyFileSync } from "fs";
 import chalk from "chalk";
 import { execa } from "execa";
 import { getRepoRoot, listWorktrees, getCurrentBranch } from "../core/git";
@@ -10,77 +10,13 @@ import {
   lockFileNames,
   manifestFileName,
   getPMInfo,
-  type PackageManager,
 } from "../core/package-manager";
 import { acquireLock, releaseLock } from "../core/lockfile";
+import { removeFromNodeManifest, findWorktreesUsing } from "../core/manifest";
 
 interface RemoveOptions {
   workspace?: string;
   force?: boolean;
-}
-
-/**
- * Remove packages from a Node.js package.json (deps + devDeps).
- */
-function removeFromNodeManifest(pkgJsonPath: string, packages: string[]): void {
-  const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
-  for (const name of packages) {
-    if (pkg.dependencies) delete pkg.dependencies[name];
-    if (pkg.devDependencies) delete pkg.devDependencies[name];
-  }
-  writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + "\n");
-}
-
-/**
- * Check if a package is listed in a Node.js package.json.
- */
-function isInNodeManifest(pkgJsonPath: string, packageName: string): boolean {
-  if (!existsSync(pkgJsonPath)) return false;
-  const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
-  return !!(pkg.dependencies?.[packageName] || pkg.devDependencies?.[packageName]);
-}
-
-/**
- * For non-Node ecosystems, check if a package name appears in the manifest file.
- * Simple text search — not perfect but good enough for warnings.
- */
-function isInManifestText(manifestPath: string, packageName: string): boolean {
-  if (!existsSync(manifestPath)) return false;
-  const content = readFileSync(manifestPath, "utf-8");
-  return content.includes(packageName);
-}
-
-/**
- * Check which other worktrees reference any of the given packages.
- */
-async function findWorktreesUsing(
-  packages: string[],
-  trees: Array<{ path: string; branch: string }>,
-  excludeBranch: string,
-  manifest: string,
-  ecosystem: string,
-  subdir: string
-): Promise<Map<string, string[]>> {
-  // Map: packageName → list of branch names that use it
-  const usage = new Map<string, string[]>();
-
-  for (const tree of trees) {
-    if (tree.branch === excludeBranch) continue;
-    const manifestPath = join(tree.path, subdir, manifest);
-
-    for (const pkg of packages) {
-      const isUsed = ecosystem === "node"
-        ? isInNodeManifest(manifestPath, pkg)
-        : isInManifestText(manifestPath, pkg);
-
-      if (isUsed) {
-        if (!usage.has(pkg)) usage.set(pkg, []);
-        usage.get(pkg)!.push(tree.branch);
-      }
-    }
-  }
-
-  return usage;
 }
 
 export async function remove(packages: string[], opts: RemoveOptions): Promise<void> {
@@ -101,7 +37,7 @@ export async function remove(packages: string[], opts: RemoveOptions): Promise<v
 
   if (isOnPrimary) {
     // === Removing from primary: dangerous, check other worktrees first ===
-    const usage = await findWorktreesUsing(
+    const usage = findWorktreesUsing(
       packages, trees, currentBranch, manifest, pmInfo.ecosystem, subdir
     );
 

@@ -11,7 +11,7 @@ import {
   lockFileNames,
   manifestFileName,
   getPMInfo,
-} from "./package-manager";
+} from "../src/core/package-manager";
 
 let testDir: string;
 

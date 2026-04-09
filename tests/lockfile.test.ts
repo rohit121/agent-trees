@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { acquireLock, releaseLock } from "./lockfile";
+import { acquireLock, releaseLock } from "../src/core/lockfile";
 
 let testDir: string;
 
