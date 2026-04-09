@@ -5,6 +5,7 @@ import * as readline from "readline";
 import chalk from "chalk";
 import { getRepoRoot, checkGitVersion, getCurrentBranch } from "../core/git";
 import { configExists, writeConfig, defaultConfig, type AtreeConfig } from "../core/config";
+import { detectPackageManager, pmRunCmd } from "../core/package-manager";
 import { selectItems } from "../ui/multi-select.js";
 
 const ATREE_GITIGNORE = `
@@ -365,19 +366,6 @@ Next:
   }
 }
 
-function detectPackageManager(repoRoot: string): "bun" | "pnpm" | "yarn" | "npm" {
-  if (existsSync(join(repoRoot, "bun.lockb")) || existsSync(join(repoRoot, "bun.lock"))) return "bun";
-  if (existsSync(join(repoRoot, "pnpm-lock.yaml"))) return "pnpm";
-  if (existsSync(join(repoRoot, "yarn.lock"))) return "yarn";
-  return "npm";
-}
-
-function pmRunCmd(pm: ReturnType<typeof detectPackageManager>, script: string): string {
-  if (pm === "bun") return `bun run ${script}`;
-  if (pm === "pnpm") return `pnpm ${script}`;
-  if (pm === "yarn") return `yarn ${script}`;
-  return `npm run ${script}`;
-}
 
 function buildHeuristicConfig(repoRoot: string, primaryBranch: string, selectedDirs: string[]): AtreeConfig {
   const config = defaultConfig();

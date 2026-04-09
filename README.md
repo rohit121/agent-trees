@@ -82,7 +82,48 @@ atree dev                    # start dev server for current tree
 atree dev --all              # start all trees in parallel with prefixed logs
 atree sync                   # re-link deps/env if symlinks break
 atree kill <branch>          # remove a worktree
+atree add <packages...>      # install packages safely via primary worktree
+atree add -D <packages...>   # install as dev dependency
+atree remove <packages...>   # remove packages safely across worktrees
 ```
+
+## Package management across worktrees
+
+When dependencies are symlinked from the primary worktree, running `npm install` or `bun add` directly in a feature worktree causes dependency drift — the install writes to the shared `node_modules` but only updates the feature branch's `package.json`. Use `atree add` and `atree remove` instead.
+
+### Adding packages
+
+```bash
+atree add stripe              # install in primary, sync to current branch
+atree add -D vitest           # add as dev dependency
+atree add -w apps/web react   # target a monorepo workspace
+```
+
+`atree add` installs via the primary worktree (where dependencies actually live), then syncs the manifest and lock file back to your current branch. A file lock prevents two agents from racing.
+
+### Removing packages
+
+Removing is asymmetric by design:
+
+- **From a feature branch:** `atree remove stripe` removes it from your branch's `package.json` only. The package stays in the shared dependency directory so other branches aren't broken. It gets pruned naturally when your branch merges and a clean install runs.
+- **From the primary branch:** `atree remove stripe` checks all active worktrees first. If another branch still uses the package, you'll see a warning and need `--force` to proceed.
+
+### Supported languages
+
+| Ecosystem | Package managers | Shared directory | Manifest file |
+|-----------|-----------------|------------------|---------------|
+| **Node.js** | bun, npm, pnpm, yarn | `node_modules` | `package.json` |
+| **Python** | poetry, uv, pip | `.venv` | `pyproject.toml` |
+| **Rust** | cargo | `target` | `Cargo.toml` |
+| **Go** | go | — | `go.mod` |
+
+Auto-detection uses lock files to pick the right package manager. For projects with multiple ecosystems (e.g. a Node frontend + Python backend), detection is based on the directory you target with `--workspace`.
+
+### Limitations
+
+- **Version conflicts across branches:** Since all worktrees share the same dependency directory, downgrading a package (e.g. `atree add react@17` when `react@18` is installed) affects every branch. `atree add` warns when it detects a version change.
+- **pip lacks structured manifests:** For plain `pip` projects (no `pyproject.toml`), manifest syncing works by file copy rather than structured merge. Consider using `poetry` or `uv` for better dependency management.
+- **Go modules:** Go doesn't have a shared install directory like `node_modules`. `atree add` for Go runs `go get` in the primary worktree and syncs `go.mod`/`go.sum`.
 
 ## Config
 

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --target node --outfile dist/atree.js --banner '#!/usr/bin/env node' && chmod +x dist/atree.js",
+    "test": "bun test",
     "prepublishOnly": "bun run build"
   },
   "files": [
