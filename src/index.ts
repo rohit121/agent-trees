@@ -33,7 +33,7 @@ program
 
 program
   .command("status")
-  .description("Show all worktrees with ports and status")
+  .description("Show all worktrees, services, and ports")
   .action(status);
 
 program

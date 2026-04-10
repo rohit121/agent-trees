@@ -13,7 +13,7 @@
   "services": {
     "web": {
       "command": "bun run dev",
-      "scope": "tree"
+      "instance": "tree"
     }
   },
   "hooks": {}

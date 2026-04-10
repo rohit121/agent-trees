@@ -14,7 +14,7 @@ export function StatusView({ trees, changedFiles, config }: Props) {
     <Box flexDirection="column" paddingY={1}>
       <Text bold>agent trees</Text>
       <Box marginTop={1} flexDirection="column">
-        {trees.map((tree) => {
+        {trees.map((tree, treeIndex) => {
           const changed = changedFiles[tree.branch] ?? 0;
           const isPrimary = tree.branch === config.primary;
 
@@ -33,12 +33,18 @@ export function StatusView({ trees, changedFiles, config }: Props) {
               <Box marginLeft={2} flexDirection="column">
                 <Text dimColor>{tree.path}</Text>
                 <Box>
-                  {Object.entries(config.services).map(([svc, svcConfig]) => (
-                    <Box key={svc} marginRight={3}>
-                      <Text color="blue">{svc}</Text>
-                      <Text dimColor> [{svcConfig.instance}]</Text>
-                    </Box>
-                  ))}
+                  {Object.entries(config.services).map(([svc, svcConfig]) => {
+                    const port = svcConfig.port != null
+                      ? svcConfig.port + treeIndex
+                      : null;
+                    return (
+                      <Box key={svc} marginRight={3}>
+                        <Text color="blue">{svc}</Text>
+                        {port != null && <Text color="yellow"> :{port}</Text>}
+                        <Text dimColor> [{svcConfig.instance}]</Text>
+                      </Box>
+                    );
+                  })}
                 </Box>
               </Box>
             </Box>

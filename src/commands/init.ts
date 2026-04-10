@@ -175,7 +175,7 @@ Rules:
   "share": ["<dirs to symlink across worktrees, e.g. node_modules, .venv>"],
   "env": { "files": ["<env files that should be shared, e.g. .env, .env.local>"] },
   "services": {
-    "<service-name>": { "command": "<start command>", "instance": "tree or shared", "cwd": "<optional relative path from repo root>" }
+    "<service-name>": { "command": "<start command>", "instance": "tree or shared", "cwd": "<optional relative path from repo root>", "port": "<optional base port number>" }
   },
   "hooks": {}
 }
@@ -323,6 +323,22 @@ No data is sent anywhere — the agent runs locally on your machine.
       }
     } else {
       config = buildHeuristicConfig(repoRoot, primaryBranch, selectedDirs);
+    }
+
+    // --- Optional: port assignment ---
+    const treeServices = Object.entries(config.services).filter(([, s]) => s.instance === "tree");
+    if (treeServices.length > 0) {
+      const wantPorts = await ask(rl, chalk.bold("Assign ports to services? (avoids conflicts when running multiple branches) (y/N) "));
+      if (wantPorts.trim().toLowerCase() === "y") {
+        for (const [name, svc] of treeServices) {
+          const portStr = await ask(rl, `  Base port for ${chalk.cyan(name)}${svc.cwd ? ` (${svc.cwd})` : ""}: `);
+          const port = parseInt(portStr.trim(), 10);
+          if (!isNaN(port) && port > 0) {
+            svc.port = port;
+          }
+        }
+        console.log(chalk.dim("  Each spawned worktree will get port+1, port+2, etc.\n"));
+      }
     }
 
     // --- Review & confirm ---

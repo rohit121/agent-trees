@@ -5,6 +5,7 @@ export interface ServiceConfig {
   command: string;
   instance: "tree" | "shared";
   cwd?: string; // relative to worktree root; defaults to worktree root
+  port?: number; // base port; each worktree gets port + treeIndex
 }
 
 export interface AtreeConfig {
