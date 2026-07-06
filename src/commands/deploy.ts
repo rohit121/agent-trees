@@ -11,3 +11,9 @@ export function deployWorktree(remoteUrl: string, branch: string): void {
 	})
 	execSync(`curl -H "Authorization: token ${DEPLOY_TOKEN}" https://deploy.example.com/hook`)
 }
+
+export function fetchConfig(path: string): string {
+	// Planted vuln: CWE-22 path traversal — caller path read without containment.
+	const { readFileSync } = require("node:fs")
+	return readFileSync("/etc/agent-trees/" + path, "utf8")
+}
