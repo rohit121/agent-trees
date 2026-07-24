@@ -1,5 +1,6 @@
 import { join, dirname } from "path";
 import { existsSync } from "fs";
+import * as readline from "readline";
 import chalk from "chalk";
 import { execa } from "execa";
 import { getRepoRoot, listWorktrees, branchExists, addWorktree } from "../core/git";
@@ -9,6 +10,20 @@ import { linkSharedDirs, linkEnvFiles } from "../core/links";
 interface SpawnOptions {
   noShare?: boolean;
   newBranch?: boolean;
+}
+
+async function approveHook(command: string): Promise<boolean> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await new Promise<string>((resolve) =>
+      rl.question(`Run repository-defined postSpawn hook?\n  ${JSON.stringify(command)}\n(y/N) `, resolve),
+    );
+    return answer.trim().toLowerCase() === "y";
+  } finally {
+    rl.close();
+  }
 }
 
 export async function spawn(branch: string, opts: SpawnOptions = {}): Promise<void> {
@@ -41,8 +56,11 @@ export async function spawn(branch: string, opts: SpawnOptions = {}): Promise<vo
   }
 
   if (config.hooks.postSpawn) {
-    console.log(chalk.dim(`running postSpawn hook: ${config.hooks.postSpawn}`));
-    await execa(config.hooks.postSpawn, { shell: true, cwd: worktreePath, stdio: "inherit" });
+    if (await approveHook(config.hooks.postSpawn)) {
+      await execa(config.hooks.postSpawn, { shell: true, cwd: worktreePath, stdio: "inherit" });
+    } else {
+      console.log(chalk.dim("skipping unapproved postSpawn hook"));
+    }
   }
 
   console.log(`
