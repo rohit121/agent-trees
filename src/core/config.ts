@@ -50,7 +50,30 @@ export function readConfig(repoRoot: string): AtreeConfig {
     return defaultConfig();
   }
   const raw = readFileSync(path, "utf-8");
-  return JSON.parse(raw) as AtreeConfig;
+  const parsed = JSON.parse(raw) as Partial<AtreeConfig>;
+  return normalizeConfig(parsed);
+}
+
+/**
+ * A hand-edited atreeconfig.json is routinely missing keys, and the old blind
+ * cast let those absences reach callers as `undefined`. `for (const dir of
+ * config.share)` then throws "is not iterable", which points at links.ts
+ * instead of at the config file that is actually wrong. Fill every field from
+ * the defaults so a partial config degrades to the default behaviour.
+ */
+function normalizeConfig(parsed: Partial<AtreeConfig>): AtreeConfig {
+  const defaults = defaultConfig();
+  return {
+    primary: parsed.primary ?? defaults.primary,
+    share: Array.isArray(parsed.share) ? parsed.share : defaults.share,
+    env: {
+      files: Array.isArray(parsed.env?.files)
+        ? parsed.env.files
+        : defaults.env.files,
+    },
+    services: parsed.services ?? defaults.services,
+    hooks: parsed.hooks ?? defaults.hooks,
+  };
 }
 
 export function writeConfig(repoRoot: string, config: AtreeConfig): void {
