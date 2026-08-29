@@ -28,7 +28,7 @@ That's it. Agent Trees:
 1. Creates a git worktree for the branch
 2. Symlinks `node_modules` (and any other configured dirs) from your main branch — no reinstall
 3. Symlinks your `.env`, `.env.local` and other config files from your main branch
-4. Runs any `postSpawn` hooks you've configured (migrations, code generation, etc.)
+4. Asks before running any `postSpawn` hook you've configured (migrations, code generation, etc.)
 
 Your agent can immediately `cd` in and start working. No setup, no missing env vars, no port conflicts to resolve manually.
 
@@ -224,7 +224,7 @@ This is the key pattern for monorepos: mark the services you're not changing as 
 }
 ```
 
-`postSpawn` runs inside the new worktree immediately after it's created — good for installing deps, running migrations, or generating code.
+`postSpawn` can run inside the new worktree immediately after it's created — after you approve the exact command shown by the CLI. Non-interactive runs skip the hook.
 
 ## What gets checked in
 
